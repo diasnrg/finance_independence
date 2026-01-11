@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -12,503 +11,92 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
+      title: 'FIRE калькулятор',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const FIRECalculator(),
+      home: const FireCalculatorPage(),
     );
   }
 }
 
-enum InvestmentType {
-  indexFund(name: 'Индексный фонд', returnRate: 0.10),
-  dollarDeposit(name: 'Долларовый депозит', returnRate: 0.01);
-
-  final String name;
-
-  final double returnRate;
-
-  const InvestmentType({required this.name, required this.returnRate});
-}
-
-class FIRECalculator extends StatefulWidget {
-  const FIRECalculator({super.key});
+class FireCalculatorPage extends StatefulWidget {
+  const FireCalculatorPage({super.key});
 
   @override
-  State<FIRECalculator> createState() => _FIRECalculatorState();
+  State<FireCalculatorPage> createState() => _FireCalculatorPageState();
 }
 
-class _NumberFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    if (newValue.text.isEmpty) {
-      return newValue;
-    }
-
-    final digitsOnly = newValue.text.replaceAll(RegExp(r'\D'), '');
-    if (digitsOnly.isEmpty) {
-      return const TextEditingValue();
-    }
-
-    final reversed = digitsOnly.split('').reversed.toList();
-    final chunks = <String>[];
-
-    for (var i = 0; i < reversed.length; i += 3) {
-      final end = (i + 3 < reversed.length) ? i + 3 : reversed.length;
-      chunks.add(reversed.sublist(i, end).reversed.join());
-    }
-
-    final formatted = chunks.reversed.join(' ');
-
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
-    );
-  }
-}
-
-class _FIRECalculatorState extends State<FIRECalculator>
-    with SingleTickerProviderStateMixin {
-  static const double _fireMultiplier = 25;
-  static const double _inflationRate = 0.03;
-
-  late TabController _tabController;
-  InvestmentType _selectedInvestmentType = InvestmentType.indexFund;
-
-  double get _annualReturn => _selectedInvestmentType.returnRate;
-  double get _monthlyReturn => _annualReturn / 12;
-
-  static const double _minYears = 1.0;
-  static const double _maxYears = 40.0;
-  static const double _defaultYears = 20.0;
-  static const int _yearsSliderDivisions = 390;
-
+class _FireCalculatorPageState extends State<FireCalculatorPage> {
   final _monthlyExpensesController = TextEditingController();
 
-  double _monthlyExpenses = 0;
-  double _targetAmount = 0;
-  double _targetAmountWithInflation = 0;
-  double _yearsToSave = _defaultYears;
-  double _monthlySavings = 0;
-  bool _isCalculated = false;
+  double? _monthlyExpenses;
 
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(
-      length: InvestmentType.values.length,
-      vsync: this,
-    );
-    _tabController.addListener(_onTabChanged);
-  }
+  void _calculate() {
+    final expenses = double.tryParse(_monthlyExpensesController.text);
 
-  @override
-  void dispose() {
-    _tabController.removeListener(_onTabChanged);
-    _tabController.dispose();
-    _monthlyExpensesController.dispose();
-    super.dispose();
-  }
-
-  void _onTabChanged() {
-    if (_tabController.indexIsChanging) return;
     setState(() {
-      _selectedInvestmentType = InvestmentType.values[_tabController.index];
-      _calculateTargetAmount();
+      _monthlyExpenses = expenses;
     });
   }
 
-  void _calculateTargetAmount() {
-    setState(() {
-      final cleanText = _monthlyExpensesController.text.replaceAll(' ', '');
-      _monthlyExpenses = double.tryParse(cleanText) ?? 0;
-
-      if (_monthlyExpenses == 0) {
-        _isCalculated = false;
-      }
-
-      _targetAmount = _monthlyExpenses * 12 * _fireMultiplier;
-      _targetAmountWithInflation =
-          _targetAmount * pow(1 + _inflationRate, _yearsToSave);
-      _calculateMonthlySavings();
-    });
+  double _calculateTargetAmount(double monthlyExpenses) {
+    final yearlyExpenses = monthlyExpenses * 12;
+    return yearlyExpenses / 0.04;
   }
 
-  void _onCalculatePressed() {
-    FocusScope.of(context).unfocus();
-    setState(() {
-      _isCalculated = true;
-    });
-  }
-
-  void _calculateMonthlySavings() {
-    if (_targetAmountWithInflation == 0) {
-      _monthlySavings = 0;
-      return;
-    }
-
-    final months = _yearsToSave * 12;
-    final numerator = _targetAmountWithInflation * _monthlyReturn;
-    final denominator = pow(1 + _monthlyReturn, months) - 1;
-
-    _monthlySavings = numerator / denominator;
-  }
-
-  String _formatNumber(double number) {
-    final numStr = number.toStringAsFixed(0);
-    final reversed = numStr.split('').reversed.toList();
-    final chunks = <String>[];
-
-    for (var i = 0; i < reversed.length; i += 3) {
-      final end = (i + 3 < reversed.length) ? i + 3 : reversed.length;
-      chunks.add(reversed.sublist(i, end).reversed.join());
-    }
-
-    return chunks.reversed.join(' ');
-  }
-
-  void _onYearsChanged(double years) {
-    setState(() {
-      _yearsToSave = years;
-      _targetAmountWithInflation =
-          _targetAmount * pow(1 + _inflationRate, _yearsToSave);
-      _calculateMonthlySavings();
-    });
+  double _calculateMonthlySavings(double targetAmount, int years) {
+    return targetAmount / (years * 12);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: _monthlyExpenses > 0
-      //     ? AppBar(
-      //         title: const Text('Калькулятор финансовой независимости'),
-      //         // backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      //       )
-      //     : null,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (!_isCalculated) ...[
-                      SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.3,
-                      ),
-                      Text(
-                        '''
-Привет, это калькулятор финансовой свободы.
-
-Оно позволяет посчитать необходимую сумму денег, чтобы человеку больше не было необходимости работать.
-        ''',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                    _buildMonthlyExpensesInput(),
-                    if (_monthlyExpenses > 0 && !_isCalculated) ...[
-                      const SizedBox(height: 16),
-                      Center(
-                        child: ElevatedButton(
-                          onPressed: _onCalculatePressed,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.primary,
-                          ),
-                          child: Text(
-                            'Показать сумму',
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                    ],
-                    AnimatedSize(
-                      duration: const Duration(milliseconds: 400),
-                      curve: Curves.easeInOut,
-                      child: _isCalculated
-                          ? Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                _buildTargetAmountDisplay(),
-                                const SizedBox(height: 16),
-                                _buildInvestmentTypeSelector(),
-                                const SizedBox(height: 16),
-                                _buildContributionBreakdown(),
-                                const SizedBox(height: 16),
-                                _buildSliders(),
-                              ],
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                  ],
-                ),
-              ),
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: const Text('Калькулятор пенсии FIRE'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const InfoCard(),
+            const SizedBox(height: 32),
+            ExpenseInput(
+              controller: _monthlyExpensesController,
+              onChanged: (_) => _calculate(),
             ),
-          ),
+            const SizedBox(height: 32),
+            if (_monthlyExpenses != null && _monthlyExpenses! > 0) ...[
+              TargetAmountCard(
+                targetAmount: _calculateTargetAmount(_monthlyExpenses!),
+              ),
+              const SizedBox(height: 24),
+              SavingsTable(
+                targetAmount: _calculateTargetAmount(_monthlyExpenses!),
+                calculateMonthlySavings: _calculateMonthlySavings,
+              ),
+            ],
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildInvestmentTypeSelector() {
-    return Card(
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: Text(
-              'Инструмент накоплений',
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-            ),
-          ),
-          SizedBox(height: 12),
-          TabBar(
-            controller: _tabController,
-            tabs: InvestmentType.values
-                .map(
-                  (type) => Tab(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(type.name, style: const TextStyle(fontSize: 13)),
-                        Text(
-                          '${(type.returnRate * 100).toStringAsFixed(0)}% годовых',
-                          style: const TextStyle(fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-                .toList(),
-          ),
-        ],
-      ),
-    );
+  @override
+  void dispose() {
+    _monthlyExpensesController.dispose();
+    super.dispose();
   }
+}
 
-  Widget _buildMonthlyExpensesInput() {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: TextField(
-            controller: _monthlyExpensesController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [_NumberFormatter()],
-            textAlign: TextAlign.center,
-            autofocus: true,
-            style: Theme.of(context).textTheme.displayMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            decoration: InputDecoration(
-              hintText: '0',
-              hintStyle: Theme.of(
-                context,
-              ).textTheme.displayMedium?.copyWith(color: Colors.grey.shade300),
-              suffix: Text(
-                '₸',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-            ),
-            onChanged: (_) => _calculateTargetAmount(),
-          ),
-        ),
-        Text(
-          'Введите сумму ежемесячных расходов',
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
-        ),
-        // const SizedBox(height: 8),
-      ],
-    );
-  }
+class InfoCard extends StatelessWidget {
+  const InfoCard({super.key});
 
-  Widget _buildTargetAmountDisplay() {
-    return Column(
-      children: [
-        Divider(),
-        SizedBox(height: 16),
-        Text(
-          'Cумма необходимая для финансовой свободы:',
-
-          style: Theme.of(
-            context,
-          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
-        ),
-        SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 12),
-                      Text(
-                        '${_formatNumber(_targetAmount)} ₸',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onPrimaryContainer,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Сумма на сегодня\n',
-                        style: Theme.of(context).textTheme.labelSmall,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 12),
-                      Text(
-                        '${_formatNumber(_targetAmountWithInflation)} ₸',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onTertiaryContainer,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'C учетом инфляции \n${(_inflationRate * 100).toStringAsFixed(0)}% в год за ${_yearsToSave.toStringAsFixed(1)} лет',
-                        style: Theme.of(context).textTheme.labelSmall,
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildContributionBreakdown() {
-    if (_targetAmountWithInflation == 0 || _monthlySavings == 0) {
-      return const SizedBox.shrink();
-    }
-
-    final totalContributed = _monthlySavings * _yearsToSave * 12;
-    final interestEarned = _targetAmountWithInflation - totalContributed;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Card(
-                // color: Colors.lightBlueAccent,
-                margin: const EdgeInsets.only(right: 4),
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Ваши вклады',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${_formatNumber(totalContributed)} ₸',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Card(
-                // color: Colors.lightGreen,
-                margin: const EdgeInsets.only(left: 4),
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Доход от процентов',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '+${_formatNumber(interestEarned)} ₸',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSliders() {
-    return Column(
-      children: [
-        _buildYearsSlider(),
-        const SizedBox(height: 24),
-        _buildMonthlySavingsChart(),
-      ],
-    );
-  }
-
-  Widget _buildYearsSlider() {
+  @override
+  Widget build(BuildContext context) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -516,149 +104,260 @@ class _FIRECalculatorState extends State<FIRECalculator>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Срок накопления',
-                  style: Theme.of(context).textTheme.titleMedium,
+                Icon(
+                  Icons.info_outline,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
+                const SizedBox(width: 8),
                 Text(
-                  '${_yearsToSave.toStringAsFixed(1)} лет',
+                  'Правило 4%',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
-            Slider(
-              value: _yearsToSave,
-              min: _minYears,
-              max: _maxYears,
-              divisions: _yearsSliderDivisions,
-              onChanged: _monthlyExpenses > 0 ? _onYearsChanged : null,
+            const SizedBox(height: 8),
+            const Text(
+              'Накопите сумму, равную 25-кратному размеру ваших годовых расходов. '
+              'Затем вы сможете снимать 4% в год, и капитал будет восполняться.',
             ),
           ],
         ),
       ),
     );
   }
+}
 
-  double _calculateMonthlySavingsForYears(double years) {
-    if (_targetAmountWithInflation == 0) return 0;
+class ExpenseInput extends StatelessWidget {
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
 
-    final targetWithInflation = _targetAmount * pow(1 + _inflationRate, years);
-    final months = years * 12;
-    final numerator = targetWithInflation * _monthlyReturn;
-    final denominator = pow(1 + _monthlyReturn, months) - 1;
+  const ExpenseInput({
+    super.key,
+    required this.controller,
+    required this.onChanged,
+  });
 
-    return numerator / denominator;
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      onChanged: onChanged,
+      decoration: const InputDecoration(
+        labelText: 'Месячные расходы',
+        suffixText: '₸',
+        border: OutlineInputBorder(),
+        helperText: 'Введите ваши текущие месячные расходы',
+      ),
+    );
+  }
+}
+
+class TargetAmountCard extends StatelessWidget {
+  final double targetAmount;
+
+  const TargetAmountCard({
+    super.key,
+    required this.targetAmount,
+  });
+
+  String _formatAmount(double amount) {
+    return amount.toStringAsFixed(0).replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]} ',
+    );
   }
 
-  Widget _buildMonthlySavingsChart() {
-    if (_targetAmount == 0) {
-      return const SizedBox.shrink();
-    }
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).colorScheme.primary,
+            Theme.of(context).colorScheme.secondary,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(32.0),
+      child: Column(
+        children: [
+          Icon(
+            Icons.stars,
+            size: 48,
+            color: Theme.of(context).colorScheme.onPrimary,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Целевая сумма',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.9),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${_formatAmount(targetAmount)} ₸',
+            style: Theme.of(context).textTheme.displaySmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-    final yearSteps = [5.0, 10.0, 15.0, 20.0, 25.0, 30.0, 35.0, 40.0];
-    final savingsData = yearSteps
-        .map(
-          (years) => {
-            'years': years,
-            'savings': _calculateMonthlySavingsForYears(years),
-          },
-        )
-        .toList();
+class SavingsTable extends StatelessWidget {
+  final double targetAmount;
+  final double Function(double, int) calculateMonthlySavings;
 
-    final maxSavings = savingsData
-        .map((data) => data['savings'] as double)
-        .reduce((a, b) => a > b ? a : b);
+  const SavingsTable({
+    super.key,
+    required this.targetAmount,
+    required this.calculateMonthlySavings,
+  });
 
-    int closestIndex = 0;
-    double minDistance = double.infinity;
-    for (int i = 0; i < yearSteps.length; i++) {
-      final distance = (_yearsToSave - yearSteps[i]).abs();
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestIndex = i;
-      }
-    }
+  String _formatAmount(double amount) {
+    return amount.toStringAsFixed(0).replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]} ',
+    );
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: Theme.of(context).colorScheme.outlineVariant,
+        ),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: Row(
               children: [
-                Text(
-                  'Ежемесячные вклады:',
-                  style: Theme.of(context).textTheme.titleMedium,
+                Icon(
+                  Icons.calendar_today,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 20,
                 ),
+                const SizedBox(width: 12),
                 Text(
-                  '${_formatNumber(_monthlySavings)} ₸',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  'План накопления',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ],
             ),
-            SizedBox(
-              height: 200,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: List.generate(savingsData.length, (index) {
-                  final data = savingsData[index];
-                  final years = data['years'] as double;
-                  final savings = data['savings'] as double;
-                  final heightRatio = savings / maxSavings;
-                  final isSelected = index == closestIndex;
+          ),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: 31,
+            separatorBuilder: (context, index) => Divider(
+              height: 1,
+              indent: 20,
+              endIndent: 20,
+              color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
+            ),
+            itemBuilder: (context, index) {
+              final years = 5 + index;
+              final monthlySavings = calculateMonthlySavings(targetAmount, years);
+              final isHighlighted = years == 10 || years == 15 || years == 20;
 
-                  return Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Container(
-                            width: double.infinity,
-                            height: 150 * heightRatio,
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Theme.of(
-                                      context,
-                                    ).colorScheme.surfaceContainerHigh,
-                              borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(4),
+              return Container(
+                color: isHighlighted
+                    ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3)
+                    : null,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: isHighlighted
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '$years',
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: isHighlighted
+                                    ? Theme.of(context).colorScheme.onPrimary
+                                    : Theme.of(context).colorScheme.onSecondaryContainer,
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${years.toInt()}',
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  fontWeight: isSelected
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                ),
-                          ),
-                          Text(
-                            'лет',
-                            style: Theme.of(context).textTheme.labelSmall,
-                          ),
-                        ],
+                            Text(
+                              years == 1 ? 'год' : years < 5 ? 'года' : 'лет',
+                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: isHighlighted
+                                    ? Theme.of(context).colorScheme.onPrimary.withOpacity(0.8)
+                                    : Theme.of(context).colorScheme.onSecondaryContainer.withOpacity(0.8),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                }),
-              ),
-            ),
-          ],
-        ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              '${_formatAmount(monthlySavings)} ₸',
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'в месяц',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }

@@ -1,38 +1,263 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FIRE Калькулятор | Казахстан</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
 
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
 
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
-  <base href="$FLUTTER_BASE_HREF">
+        h1 {
+            text-align: center;
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
 
-  <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Калькулятор финансовой независимости - рассчитайте сколько нужно накопить для выхода на пенсию">
+        .subtitle {
+            text-align: center;
+            color: #8892b0;
+            font-size: 0.9rem;
+            margin-bottom: 32px;
+        }
 
-  <!-- iOS meta tags & icons -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="FIRE Calculator">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+        .input-group {
+            margin-bottom: 20px;
+        }
 
-  <title>Калькулятор финансовой независимости</title>
-  <link rel="manifest" href="manifest.json">
+        label {
+            display: block;
+            font-size: 0.85rem;
+            color: #8892b0;
+            margin-bottom: 8px;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            padding-right: 50px;
+            font-size: 1.1rem;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #00d9ff;
+        }
+
+        .currency {
+            position: absolute;
+            right: 16px;
+            color: #8892b0;
+            font-size: 0.9rem;
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.1) 0%, rgba(0, 255, 136, 0.1) 100%);
+            border: 1px solid rgba(0, 217, 255, 0.3);
+        }
+
+        .target-amount {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .target-label {
+            font-size: 0.85rem;
+            color: #8892b0;
+            margin-bottom: 8px;
+        }
+
+        .target-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .target-subtitle {
+            font-size: 0.8rem;
+            color: #8892b0;
+            margin-top: 4px;
+        }
+
+        .savings-table {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .savings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+
+        .years {
+            color: #8892b0;
+            font-size: 0.9rem;
+        }
+
+        .monthly-amount {
+            font-weight: 600;
+            color: #00ff88;
+            font-size: 1rem;
+        }
+
+        .info {
+            margin-top: 24px;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            font-size: 0.8rem;
+            color: #8892b0;
+            line-height: 1.5;
+        }
+
+        .info-title {
+            color: #fff;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .highlight {
+            color: #00d9ff;
+        }
+    </style>
 </head>
 <body>
-  <script src="flutter_bootstrap.js" async></script>
+    <div class="container">
+        <h1>🔥 FIRE Калькулятор</h1>
+        <p class="subtitle">Сколько нужно накопить для финансовой свободы</p>
+
+        <div class="card">
+            <div class="input-group">
+                <label>Ваши месячные расходы</label>
+                <div class="input-wrapper">
+                    <input type="number" id="expenses" placeholder="500000" value="500000">
+                    <span class="currency">₸</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card result-card">
+            <div class="target-amount">
+                <div class="target-label">Нужно накопить</div>
+                <div class="target-value" id="targetAmount">150 000 000 ₸</div>
+                <div class="target-subtitle">по правилу 4%</div>
+            </div>
+
+            <div class="savings-table" id="savingsTable">
+                <!-- Generated by JS -->
+            </div>
+        </div>
+
+        <div class="info">
+            <div class="info-title">Как это работает?</div>
+            <p>
+                <span class="highlight">Правило 4%</span> — это стратегия, при которой вы можете безопасно снимать 4% от своего капитала ежегодно, не истощая его. Для этого нужно накопить сумму, равную <span class="highlight">годовым расходам × 25</span>.
+            </p>
+            <p style="margin-top: 8px;">
+                Расчёт накоплений учитывает среднюю доходность <span class="highlight">10% годовых</span> (исторически реалистично для диверсифицированного портфеля).
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const expensesInput = document.getElementById('expenses');
+        const targetAmountEl = document.getElementById('targetAmount');
+        const savingsTableEl = document.getElementById('savingsTable');
+
+        const periods = [5, 10, 15, 20, 25, 30];
+        const annualReturn = 0.10; // 10% годовых
+
+        function formatMoney(amount) {
+            return Math.round(amount).toLocaleString('ru-RU') + ' ₸';
+        }
+
+        function calculateMonthlySavings(targetAmount, years, annualRate) {
+            // PMT formula for future value
+            const monthlyRate = annualRate / 12;
+            const months = years * 12;
+            
+            if (monthlyRate === 0) {
+                return targetAmount / months;
+            }
+            
+            // FV = PMT * ((1 + r)^n - 1) / r
+            // PMT = FV * r / ((1 + r)^n - 1)
+            const factor = Math.pow(1 + monthlyRate, months) - 1;
+            return (targetAmount * monthlyRate) / factor;
+        }
+
+        function calculate() {
+            const monthlyExpenses = parseFloat(expensesInput.value) || 0;
+            const yearlyExpenses = monthlyExpenses * 12;
+            const targetAmount = yearlyExpenses * 25; // 4% rule = 25x
+
+            targetAmountEl.textContent = formatMoney(targetAmount);
+
+            let tableHTML = '';
+            periods.forEach(years => {
+                const monthlySavings = calculateMonthlySavings(targetAmount, years, annualReturn);
+                tableHTML += `
+                    <div class="savings-row">
+                        <span class="years">За ${years} лет</span>
+                        <span class="monthly-amount">${formatMoney(monthlySavings)}/мес</span>
+                    </div>
+                `;
+            });
+
+            savingsTableEl.innerHTML = tableHTML;
+        }
+
+        expensesInput.addEventListener('input', calculate);
+        calculate(); // Initial calculation
+    </script>
 </body>
 </html>
